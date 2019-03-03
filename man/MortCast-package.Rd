@@ -7,7 +7,8 @@
 \title{MortCast: Estimation and Projection of Age-Specific Mortality Rates}
 \description{
 Age-specific mortality rates are estimated and projected using 
-    the Kannisto, Lee-Carter and related methods as described in Sevcikova et al. (2016) <doi:10.1007/978-3-319-26603-9_15>.
+    the Kannisto, Lee-Carter and related methods as described in 
+    Sevcikova et al. (2016) <doi:10.1007/978-3-319-26603-9_15>.
 }
 \details{
 The package implements methodology described in Sevcikova et al. (2016) that is related to 
@@ -29,6 +30,13 @@ estimating and predicting age-specific mortality rates. The main functions are:
 }
 Functions contained in the package can be used to apply Algorithm 2 in 
 Sevcikova et al. (2016) as shown in the Example below.
+
+Other methods for forecasting mortality rates are available:
+\itemize{
+   \item \code{\link{pmd}}: pattern of mortality decline
+   \item \code{\link{mlt}}: model life tables
+   \item \code{\link{mortcast.blend}}: combining two different methods
+}
 }
 \examples{
 # This example applies Algorithm 2 in Sevcikova et al. (2016) 

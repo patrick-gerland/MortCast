@@ -137,7 +137,7 @@ lileecarter.estimate <- function(mxM, mxF, ...) {
 #' 
 #' @param bx A vector of the Lee-Carter \eqn{b_x} parameter
 #'    (from e.g. \code{\link{lileecarter.estimate}} or \code{\link{leecarter.estimate}}).
-#' @param ultimate.bx A vector of the ultimate\eqn{b^u_x} parameter as defined in Li, Lee, Gerland (2013)
+#' @param ultimate.bx A vector of the ultimate \eqn{b^u_x} parameter as defined in Li, Lee, Gerland (2013)
 #'    (obtained using \code{\link{lileecarter.estimate}} or \code{\link{ultimate.bx}}).    
 #' @param e0 A time series of life expectancies.
 #' @param e0l Level of life expectancy at which the rotation starts.
@@ -228,12 +228,16 @@ ultimate.bx <- function(bx) {
 #' @param rotate If \code{TRUE} the rotation method of \eqn{b_x} is used as described in Li et al. (2013).
 #' @param keep.lt Logical. If \code{TRUE} additional life table columns are kept in the 
 #'     resulting object.
+#' @param constrain.all.ages By default the method constrains the male mortality to be above female 
+#'     mortality for old ages if the male life expectancy is below the female life expectancy. Setting 
+#'     this argument to \code{TRUE} causes this constraint to be applied to all ages.
 #' @return List with elements \code{female} and \code{male}, each of which contains a matrix \code{mx}
 #'     with the predicted mortality rates. If \code{keep.lt} is \code{TRUE}, it also 
 #'     contains matrices \code{sr} (survival rates), and life table quantities \code{Lx} and \code{lx}.
 #' @export
 #' 
-#' @seealso \code{\link{rotate.leecarter}}, \code{\link{leecarter.estimate}}, \code{\link{lileecarter.estimate}}
+#' @seealso \code{\link{rotate.leecarter}}, \code{\link{leecarter.estimate}}, \code{\link{lileecarter.estimate}},
+#'     \code{\link{mortcast.blend}}
 #' @references
 #' Li, N., Lee, R. D. and Gerland, P. (2013). Extending the Lee-Carter method to model the rotation 
 #' of age patterns of mortality decline for long-term projections. Demography, 50, 2037-2051.
@@ -260,7 +264,13 @@ ultimate.bx <- function(bx) {
 #'     ylab="female mx", xlab="Age", main=country)
 #' for(i in 2:ncol(pred$female$mx)) lines(pred$female$mx[,i], col="grey")
 #' 
-mortcast <- function (e0m, e0f, lc.pars, rotate = TRUE, keep.lt = FALSE) {
+mortcast <- function (e0m, e0f, lc.pars, rotate = TRUE, keep.lt = FALSE, 
+                      constrain.all.ages = FALSE) {
+    # if e0 is a data.frame, convert to vector (it would not drop dimension without as.matrix)
+    if(length(dim(e0m)) > 0) e0m <- drop(as.matrix(e0m)) 
+    if(length(dim(e0f)) > 0) e0f <- drop(as.matrix(e0f)) 
+    
+    # prepare for computation
     e0  <- list(female=e0f, male=e0m)
     npred <- length(e0f)
     nage <- length(lc.pars$female$ax)
@@ -268,20 +278,28 @@ mortcast <- function (e0m, e0f, lc.pars, rotate = TRUE, keep.lt = FALSE) {
     zeromatmx <- matrix(0, nrow=nage, ncol=npred)
     ressex <- list(mx=zeromatmx, lx=zeromatmx, sr=zeromatsr, Lx=zeromatsr)
     result <- list(female = ressex, male = ressex)
+    
+    # rotate bx if needed
     if(rotate)
         Bxt <- rotate.leecarter(lc.pars$bx, lc.pars$ultimate.bx, (e0f + e0m)/2)
     else
         Bxt <- matrix(lc.pars$bx, nrow=nage, ncol=npred)
-    for(sex in c("female", "male")) # allow for time-dependent ax
+    
+    # allow for time-dependent ax
+    for(sex in c("female", "male")) 
         if(is.null(lc.pars[[sex]]$axt)) 
             lc.pars[[sex]]$axt <- matrix(lc.pars[[sex]]$ax, nrow=nrow(Bxt), ncol=npred)
+    
+    # compute ranges for k(t)
     kranges <- .kranges(Bxt, lc.pars$male$axt, lc.pars$female$axt)
+    
     #Get the projected kt from e0, and make projection of Mx
     for (sex in c("female", "male")) { # iterate over female and male (order matters because of the constrain)
         LCres <- .C("LC", as.integer(npred), as.integer(c(female=2, male=1)[sex]), as.integer(nage),
                   as.numeric(lc.pars[[sex]]$axt), as.numeric(Bxt), as.numeric(e0[[sex]]), 
                   Kl=as.numeric(kranges[[sex]]$kl), Ku=as.numeric(kranges[[sex]]$ku), 
-                  constrain=as.integer(sex == "male"), 
+                  # 1 for constraining old ages only; 2 for constraining all ages
+                  constrain=as.integer((sex == "male") * ((sex == "male") + (constrain.all.ages == TRUE))), 
                   FMx=as.numeric(result$female$mx), FEop=as.numeric(e0$female),
                   LLm = as.numeric(result[[sex]]$Lx), Sr=as.numeric(result[[sex]]$sr), 
                   lx=as.numeric(result[[sex]]$lx), Mx=as.numeric(result[[sex]]$mx))

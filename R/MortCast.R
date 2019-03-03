@@ -1,6 +1,7 @@
 #' @useDynLib MortCast, .registration = TRUE
 #' @import stats
 #' @import wpp2017
+#' @importFrom utils data
 #' @details 
 #' The package implements methodology described in Sevcikova et al. (2016) that is related to 
 #' estimating and predicting age-specific mortality rates. The main functions are:
@@ -21,6 +22,13 @@
 #' }
 #' Functions contained in the package can be used to apply Algorithm 2 in 
 #' Sevcikova et al. (2016) as shown in the Example below.
+#' 
+#' Other methods for forecasting mortality rates are available:
+#' \itemize{
+#'    \item \code{\link{pmd}}: pattern of mortality decline
+#'    \item \code{\link{mlt}}: model life tables
+#'    \item \code{\link{mortcast.blend}}: combining two different methods
+#' }
 #' 
 #' @references
 #' Li, N. and Lee, R. D. (2005). Coherent mortality forecasts for a group of populations: 
